@@ -1,16 +1,8 @@
-import csv
-import re
-import string
 import sys
-
 import math
-import os
-import random
-import zipfile
 
 import numpy as np
 import pandas as pd
-from six.moves import urllib
 from six.moves import xrange
 import tensorflow as tf
 
@@ -30,18 +22,24 @@ print "Read %d labeled train reviews, %d labeled test reviews, and %d unlabeled 
 sentiments = train["sentiment"]
 
 sentences = []
+sentences_to_plot = []
+
+para_plot_only = 30
+word_plot_only = 500
 
 print "Parsing sentences from training set"
 for index, row in train.iterrows():
-    sentences.append(paragraph_to_words(row))
+    sentences.append(paragraph_to_words(row, stem=True))
+    if index < para_plot_only:
+        sentences_to_plot.append(paragraph_to_words(row, stem=False, lemmatize=False))
 
 print "Parsing sentences from unlabeled set"
 for index, row in unlabeled_train.iterrows():
-    sentences.append(paragraph_to_words(row))
+    sentences.append(paragraph_to_words(row, stem=True))
 
 print "Parsing sentences from test set"
 for index, row in test.iterrows():
-    sentences.append(paragraph_to_words(row))
+    sentences.append(paragraph_to_words(row, stem=True))
 
 paragraph_size = len(sentences)
 print('paragraph_size: ', paragraph_size)
@@ -54,7 +52,7 @@ min_freq = 4
 # data, count, dictionary, reverse_dictionary = build_fixed_size_dataset(sentences, vocabulary_size)
 data, count, dictionary, reverse_dictionary = build_dataset_with_frequent_words(sentences, min_freq)
 print('Most common words (+UNK)', count[:5])
-print('Sample data', data[:10])
+print('Sample data', data[:1])
 print('vocabulary size', len(dictionary))
 
 sum_len = 0
@@ -155,10 +153,10 @@ with graph.as_default():
 
     # Construct the SGD optimizer using a learning rate of 1.0.
     global_step = tf.Variable(0, trainable=False)
-    starter_learning_rate = 0.1
+    starter_learning_rate = 1.0
     learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                                10000, 0.99, staircase=True)
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
     # optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
 
     # Compute the cosine similarity between minibatch examples and all embeddings.
@@ -190,14 +188,14 @@ with tf.Session(graph=graph) as session:
 
         # We perform one update step by evaluating the optimizer op (including it
         # in the list of returned values for session.run())
-        _, loss_val = session.run([optimizer, loss], feed_dict=feed_dict)
+        _, loss_val, current_learning_rate = session.run([optimizer, loss, learning_rate], feed_dict=feed_dict)
         average_loss += loss_val
 
         if step % 5000 == 0:
             if step > 0:
                 average_loss /= 5000
             # The average loss is an estimate of the loss over the last 2000 batches.
-            print("Average loss at step ", step, ": ", average_loss)
+            print("Average loss at step ", step, ": ", average_loss, ", learning rate: ", current_learning_rate)
             sys.stdout.flush()
             average_loss = 0
 
@@ -216,11 +214,24 @@ with tf.Session(graph=graph) as session:
     final_embeddings = normalized_embeddings.eval()
     final_para_embeddings = normalized_para_embeddings.eval()
 
-    random_forest_classify(final_para_embeddings[0: train_size], sentiments,
-                           final_para_embeddings[-test_size:], 100)
+random_forest_classify(final_para_embeddings[0: train_size], sentiments, final_para_embeddings[-test_size:], 100)
 
-    gradient_boosting_classify(final_para_embeddings[0: train_size], sentiments,
-                           final_para_embeddings[-test_size:], 100)
+gradient_boosting_classify(final_para_embeddings[0: train_size], sentiments, final_para_embeddings[-test_size:], 100)
 
-    svc_classify(final_para_embeddings[0: train_size], sentiments, 
-                           final_para_embeddings[-test_size:], svc_c=10.0)
+svc_classify(final_para_embeddings[0: train_size], sentiments, final_para_embeddings[-test_size:], svc_c=10.0)
+
+try:
+    from sklearn.manifold import TSNE
+
+    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+    low_dim_embs = tsne.fit_transform(final_para_embeddings[:para_plot_only, :])
+    para_labels = [' '.join(sentences_to_plot[i].words) for i in xrange(para_plot_only)]
+    plot_with_para_labels(low_dim_embs, para_labels)
+
+    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+    low_dim_embs = tsne.fit_transform(final_embeddings[:word_plot_only, :])
+    labels = [reverse_dictionary[i] for i in xrange(word_plot_only)]
+    plot_with_word_labels(low_dim_embs, labels)
+
+except ImportError:
+    print("Please install sklearn and matplotlib to visualize embeddings.")

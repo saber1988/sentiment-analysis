@@ -7,6 +7,8 @@ from nltk.tokenize import RegexpTokenizer
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.stem import PorterStemmer
 
+import matplotlib.pyplot as plt
+
 import re
 import collections
 import csv
@@ -139,8 +141,44 @@ def svc_classify(my_train_data, my_train_label, my_test_data, svc_c):
 
 def save_data(labels, file_name):
     with open(file_name, 'wb') as my_file:
-        my_writer=csv.writer(my_file)
+        my_writer = csv.writer(my_file)
         for label in labels:
-            tmp=[]
+            tmp = []
             tmp.append(label)
             my_writer.writerow(tmp)
+
+
+def plot_with_para_labels(low_dim_embs, para_labels, filename='tsne-para.png'):
+    assert low_dim_embs.shape[0] == len(para_labels), "label number must equal embedding number"
+    plt.clf()
+    plt.figure(figsize=(200, 36))
+    axes = plt.axes([0.5, 0.1, 0.4, 0.8])
+    axes.scatter(low_dim_embs[:, 0], low_dim_embs[:, 1], marker='o', cmap=plt.cm.seismic, s=80)
+    for label, x, y in zip(para_labels, low_dim_embs[:, 0], low_dim_embs[:, 1]):
+        plt.annotate(
+            label,
+            xy=(x, y),
+            xytext=(-8, -3),
+            textcoords='offset points',
+            ha='right',
+            va='bottom',
+            bbox=None,
+            arrowprops=None)
+    plt.savefig(filename)
+
+
+def plot_with_word_labels(low_dim_embs, labels, filename='tsne-word.png'):
+    assert low_dim_embs.shape[0] >= len(labels), "More labels than embeddings"
+    plt.clf()
+    plt.figure(figsize=(18, 18))  #in inches
+    for i, label in enumerate(labels):
+        x, y = low_dim_embs[i, :]
+        plt.scatter(x, y)
+        plt.annotate(label,
+                     xy=(x, y),
+                     xytext=(5, 2),
+                     textcoords='offset points',
+                     ha='right',
+                     va='bottom')
+
+    plt.savefig(filename)
