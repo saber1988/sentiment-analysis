@@ -16,7 +16,7 @@ train_size = train["review"].size
 test_size = test["review"].size
 unlabeled_train_size = unlabeled_train["review"].size
 
-print "Read %d labeled train reviews, %d labeled test reviews, and %d unlabeled reviews\n" % \
+print "Read %d labeled train reviews, %d labeled test reviews, and %d unlabeled reviews" % \
       (train_size, test_size, unlabeled_train_size)
 
 sentiments = train["sentiment"]
@@ -42,7 +42,7 @@ for index, row in test.iterrows():
     sentences.append(paragraph_to_words(row, stem=True))
 
 paragraph_size = len(sentences)
-print('paragraph_size: ', paragraph_size)
+print 'paragraph_size: %d' % (paragraph_size)
 
 del train, test, unlabeled_train
 
@@ -155,7 +155,7 @@ with graph.as_default():
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = 1.0
     learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                               10000, 0.99, staircase=True)
+                                               100000, 0.99, staircase=True)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
     # optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
 
@@ -173,7 +173,7 @@ with graph.as_default():
     init = tf.initialize_all_variables()
 
 # num_steps = 100000
-num_steps = 5000000
+num_steps = 10000000
 
 with tf.Session(graph=graph) as session:
     # We must initialize all variables before we use them.
@@ -195,7 +195,7 @@ with tf.Session(graph=graph) as session:
             if step > 0:
                 average_loss /= 5000
             # The average loss is an estimate of the loss over the last 2000 batches.
-            print("Average loss at step ", step, ": ", average_loss, ", learning rate: ", current_learning_rate)
+            print "Average loss at step %d: %f, learning rate: %f" % (step, average_loss, current_learning_rate)
             sys.stdout.flush()
             average_loss = 0
 
