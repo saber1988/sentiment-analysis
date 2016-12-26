@@ -173,7 +173,7 @@ with graph.as_default():
     init = tf.initialize_all_variables()
 
 # num_steps = 100000
-num_steps = 10000000
+num_steps = 20000000
 
 with tf.Session(graph=graph) as session:
     # We must initialize all variables before we use them.
